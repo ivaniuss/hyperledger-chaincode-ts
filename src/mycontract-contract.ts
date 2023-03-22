@@ -14,6 +14,13 @@ export class MycontractContract extends Contract {
         return (!!data && data.length > 0);
     }
 
+    @Transaction(false)
+    @Returns('boolean')
+    public async myTxExists(ctx: Context, id: string): Promise<boolean> {
+        const data: Uint8Array = await ctx.stub.getState(id);
+        return (!!data && data.length > 0);
+    }
+
     @Transaction()
     public async createMyAccount(ctx: Context, id: string, name: string, balance: number, addressBTC: string): Promise<void> {
         const exists: boolean = await this.myAccountExists(ctx, id);
@@ -34,18 +41,31 @@ export class MycontractContract extends Contract {
 
     @Transaction(false)
     @Returns('Account')
-    public async readMycontract(ctx: Context, mycontractId: string): Promise<Account> {
-        const exists: boolean = await this.myAccountExists(ctx, mycontractId);
+    public async readMyAccount(ctx: Context, myAccountId: string): Promise<Account> {
+        const exists: boolean = await this.myAccountExists(ctx, myAccountId);
         if (!exists) {
-            throw new Error(`The mycontract ${mycontractId} does not exist`);
+            throw new Error(`The account ${myAccountId} does not exist`);
         }
-        const data: Uint8Array = await ctx.stub.getState(mycontractId);
+        const data: Uint8Array = await ctx.stub.getState(myAccountId);
         const mycontract: Account = JSON.parse(data.toString()) as Account;
         return mycontract;
     }
 
+    @Transaction(false)
+    @Returns('Tx')
+    public async readMyTx(ctx: Context, myTxId: string): Promise<Tx> {
+        const exists: boolean = await this.myTxExists(ctx, myTxId);
+        if (!exists) {
+            throw new Error(`The transaction ${myTxId} does not exist`);
+        }
+        const data: Uint8Array = await ctx.stub.getState(myTxId);
+        const myTx: Tx = JSON.parse(data.toString()) as Tx;
+        return myTx;
+    }
+
     @Transaction()
-    public async transferAmount(ctx: Context, idTx: string, idFrom: string, idTo: string, amount: number): Promise<void> {
+    @Returns('Tx')
+    public async transferAmount(ctx: Context, idTx: string, idFrom: string, idTo: string, amount: number): Promise<Tx> {
         const existsIdFrom: boolean = await this.myAccountExists(ctx, idFrom);
         if (!existsIdFrom) {
             throw new Error(`The account ${idFrom} does not exist`);
@@ -72,7 +92,7 @@ export class MycontractContract extends Contract {
                 balanceUpdateFrom_.balance -= amount;
                 balanceUpdateTo_.balance += amount;
                 await ctx.stub.putState(idFrom, Buffer.from(JSON.stringify(balanceUpdateFrom_)));
-                await ctx.stub.putState(idFrom, Buffer.from(JSON.stringify(balanceUpdateTo_)));
+                await ctx.stub.putState(idTo, Buffer.from(JSON.stringify(balanceUpdateTo_)));
 
                 const newTx: Tx = new Tx();
                 newTx.idFrom = idFrom;
@@ -81,20 +101,11 @@ export class MycontractContract extends Contract {
 
                 const txBuffer: Buffer = Buffer.from(JSON.stringify(newTx));
                 await ctx.stub.putState(idTx, txBuffer);
+                return newTx;
             }
         }
         else {
             throw new Error(`The account ${idFrom} does not exist`)
         }
     }
-
-    // @Transaction()
-    // public async deleteMycontract(ctx: Context, mycontractId: string): Promise<void> {
-    //     const exists: boolean = await this.mycontractExists(ctx, mycontractId);
-    //     if (!exists) {
-    //         throw new Error(`The mycontract ${mycontractId} does not exist`);
-    //     }
-    //     await ctx.stub.deleteState(mycontractId);
-    // }
-
 }
