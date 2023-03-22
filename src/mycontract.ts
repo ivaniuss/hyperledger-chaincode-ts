@@ -13,3 +13,12 @@ export class Account {
     public balance: number;
     public addressBTC: string
 }
+
+@Object()
+export class Tx {
+
+    @Property()
+    public idFrom: string;
+    public idTo: string;
+    public amount: number;
+}
